@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monthly → Annual Expense Calculator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 480px;
+    padding: 40px 36px;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: #86868b;
+    margin-bottom: 32px;
+  }
+  .field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .field:last-of-type { border-bottom: none; }
+  .field label {
+    font-size: 15px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .field .values {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .input-wrap {
+    position: relative;
+    width: 120px;
+  }
+  .input-wrap::before {
+    content: '$';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: #86868b;
+    pointer-events: none;
+  }
+  .input-wrap input {
+    width: 100%;
+    padding: 10px 12px 10px 26px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fafafa;
+  }
+  .input-wrap input:focus {
+    border-color: #0071e3;
+    background: #fff;
+  }
+  .annual {
+    font-size: 14px;
+    color: #86868b;
+    width: 90px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 20px 0;
+  }
+  .total-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+  .total-row .label {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #86868b;
+    font-weight: 600;
+  }
+  .total-amounts {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+  }
+  .total-monthly {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .total-annual {
+    font-size: 14px;
+    color: #0071e3;
+    font-weight: 600;
+  }
+  .bar-section { margin-top: 28px; }
+  .bar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .bar-item .bar-label {
+    width: 100px;
+    flex-shrink: 0;
+    color: #6e6e73;
+  }
+  .bar-track {
+    flex: 1;
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .bar-pct {
+    width: 36px;
+    text-align: right;
+    color: #86868b;
+    font-size: 12px;
+  }
+  .colors-0 { background: #0071e3; }
+  .colors-1 { background: #34c759; }
+  .colors-2 { background: #ff9500; }
+  .colors-3 { background: #af52de; }
+  .colors-4 { background: #ff3b30; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Expense Calculator</h1>
+  <p class="subtitle">Monthly amounts → annual projections</p>
+
+  <div id="fields"></div>
+
+  <div class="divider"></div>
+
+  <div class="total-row">
+    <span class="label">Total</span>
+    <div class="total-amounts">
+      <span class="total-monthly" id="totalMonthly">$0</span>
+      <span class="total-annual" id="totalAnnual">$0 / yr</span>
+    </div>
+  </div>
+
+  <div class="bar-section" id="bars"></div>
+</div>
+
+<script>
+const categories = [
+  { id: 'rent', label: 'Rent' },
+  { id: 'groceries', label: 'Groceries' },
+  { id: 'transport', label: 'Transportation' },
+  { id: 'subscriptions', label: 'Subscriptions' },
+  { id: 'other', label: 'Other' }
+];
+
+const fmt = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+function render() {
+  const fieldsEl = document.getElementById('fields');
+  categories.forEach((cat, i) => {
+    const div = document.createElement('div');
+    div.className = 'field';
+    div.innerHTML = `
+      <label>${cat.label}</label>
+      <div class="values">
+        <div class="input-wrap">
+          <input type="number" id="input-${cat.id}" placeholder="0" min="0" step="1" data-index="${i}">
+        </div>
+        <span class="annual" id="annual-${cat.id}">$0 / yr</span>
+      </div>`;
+    fieldsEl.appendChild(div);
+  });
+
+  document.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', update);
+  });
+}
+
+function update() {
+  let total = 0;
+  const vals = categories.map(cat => {
+    const v = parseFloat(document.getElementById(`input-${cat.id}`).value) || 0;
+    document.getElementById(`annual-${cat.id}`).textContent = fmt(v * 12) + ' / yr';
+    total += v;
+    return v;
+  });
+
+  document.getElementById('totalMonthly').textContent = fmt(total);
+  document.getElementById('totalAnnual').textContent = fmt(total * 12) + ' / yr';
+
+  // bars
+  const barsEl = document.getElementById('bars');
+  barsEl.innerHTML = '';
+  if (total > 0) {
+    categories.forEach((cat, i) => {
+      const pct = ((vals[i] / total) * 100);
+      if (vals[i] === 0) return;
+      barsEl.innerHTML += `
+        <div class="bar-item">
+          <span class="bar-label">${cat.label}</span>
+          <div class="bar-track"><div class="bar-fill colors-${i}" style="width:${pct}%"></div></div>
+          <span class="bar-pct">${Math.round(pct)}%</span>
+        </div>`;
+    });
+  }
+}
+
+render();
+</script>
+</body>
+</html>
